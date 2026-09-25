@@ -33,21 +33,18 @@ public static class CustomerEndpoints
                 var media = content["application/json"]!;
                 media.Examples ??= new Dictionary<string, IOpenApiExample>();
 
-                // E-mail novo -> 201 (sequência ajustada no seed, próximo Id = 7).
                 media.Examples["cliente-novo-201"] = new OpenApiExample
                 {
                     Summary = "Cliente novo — 201",
                     Value = JsonNode.Parse("""{ "name": "Gabriela Nunes", "email": "gabi@exemplo.com" }"""),
                 };
 
-                // E-mail do seed (Ana Souza) -> regra #5 validada no service + índice único no banco: 409.
                 media.Examples["email-duplicado-409"] = new OpenApiExample
                 {
                     Summary = "E-mail duplicado — 409 (regra #5)",
                     Value = JsonNode.Parse("""{ "name": "Ana Souza", "email": "ana@exemplo.com" }"""),
                 };
 
-                // Exemplo padrão que o Scalar pré-preenche ao abrir o request.
                 media.Example = media.Examples["cliente-novo-201"].Value;
                 return Task.CompletedTask;
             });

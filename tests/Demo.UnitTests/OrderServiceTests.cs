@@ -36,7 +36,6 @@ public class OrderServiceTests
         result.Success.Should().BeTrue();
         result.Order!.Total.Should().Be(31.5m);
         result.Order.Items.Should().HaveCount(1);
-
         // O gateway externo foi chamado com o total correto.
         gateway.Calls.Should().HaveCount(1);
         gateway.Calls[0].Amount.Should().Be(31.5m);
@@ -83,10 +82,9 @@ public class OrderServiceTests
         result.Order!.Status.Should().Be(nameof(OrderStatus.PaymentRefused));
     }
 
-    // ---- Regra de negócio #5: unicidade de e-mail / nome de produto ----
-    // Estes testes de unidade validam a checagem NO SERVICE (AnyAsync no fake).
-    // Eles passam mesmo no branch de demonstração, porque o fake em memória NUNCA
-    // impõe a constraint de unicidade — a garantia real está só no banco (PostgreSQL).
+    // Regra #5: validação no service (AnyAsync no fake). Passam mesmo no branch de
+    // demonstração — o fake em memória nunca impõe a constraint; a garantia real
+    // está só no banco (PostgreSQL), verificada pelos testes de integração.
     [Fact]
     public async Task CreateCustomer_WhenEmailAlreadyExists_ShouldReturnFailure()
     {
@@ -94,7 +92,7 @@ public class OrderServiceTests
         var db = FakeAppDbContext.Create(customers: [new Customer { Name = "Ana", Email = "ana@x.com" }]);
         var service = new OrderService(db, new SpyPaymentGateway());
 
-        // Act — mesmo email de um cliente já existente.
+        // Act: mesmo e-mail de um cliente já existente.
         var result = await service.CreateCustomerAsync(new Application.Dtos.CreateCustomerRequest("Outra", "ana@x.com"));
 
         // Assert
@@ -109,7 +107,7 @@ public class OrderServiceTests
         var db = FakeAppDbContext.Create(products: [new Product { Name = "Caneta", Price = 3m }]);
         var service = new OrderService(db, new SpyPaymentGateway());
 
-        // Act — mesmo nome de um produto já existente.
+        // Act: mesmo nome de um produto já existente.
         var result = await service.CreateProductAsync(new Application.Dtos.CreateProductRequest("Caneta", 4m));
 
         // Assert

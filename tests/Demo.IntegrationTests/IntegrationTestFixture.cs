@@ -7,19 +7,10 @@ using Testcontainers.PostgreSql;
 namespace Demo.IntegrationTests;
 
 /// <summary>
-/// Fixture compartilhada por TODA a suíte de integração (collection fixture):
-///
-///   Testcontainers inicia UM PostgreSQL real (postgres:17) e mantém vivo durante
-///   a execução. O caminho de criação é:
-///
-///   PostgreSqlContainer
-///        → integration test fixture (IAsyncLifetime)
-///        → CustomWebApplicationFactory
-///        → WebApplicationFactory<Program>
-///        → HttpClient
-///
-/// O ciclo de vida assíncrono do xunit.v3 (IAsyncLifetime) garante que o container
-/// suba antes do primeiro teste e seja removido ao final.
+/// Fixture compartilhada por TODA a suíte de integração (collection fixture).
+/// O Testcontainers sobe UM PostgreSQL real (postgres:17) que fica vivo durante
+/// a execução: PostgreSqlContainer → IntegrationTestFixture (IAsyncLifetime)
+/// → CustomWebApplicationFactory → WebApplicationFactory&lt;Program&gt; → HttpClient.
 /// </summary>
 public sealed class IntegrationTestFixture : IAsyncLifetime
 {
@@ -37,18 +28,14 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        // 1) Sobe o PostgreSQL real (download da imagem na primeira vez).
         await _container.StartAsync();
-
-        // 2) Cria a aplicação apontando para o banco do container.
         Factory = new CustomWebApplicationFactory(ConnectionString);
 
-        // 3) Aplica as migrações no banco real (mesma connection string da config).
+        // Migrações aplicadas no banco real do container.
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
 
-        // 4) Pronto: cliente HTTP para os testes.
         Client = Factory.CreateClient();
     }
 

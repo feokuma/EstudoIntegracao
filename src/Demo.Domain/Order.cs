@@ -7,7 +7,6 @@ namespace Demo.Domain;
 /// </summary>
 public class Order
 {
-    // Lista inicializada aqui para permitir adicionar itens sem construtor customizado.
     private readonly List<OrderItem> _items = new();
 
     public int Id { get; set; }

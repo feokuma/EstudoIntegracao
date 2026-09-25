@@ -8,14 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Demo.IntegrationTests.Tests;
 
 /// <summary>
-/// CENÁRIO 1 — "Arrange direto no banco → chamada HTTP → Assert da API".
-///
-///   TEST → insere dados no PostgreSQL via DbContext (Arrange)
-///        → GET via HttpClient (atravessa as camadas reais)
-///        → valida status e conteúdo da resposta (Assert).
-///
-/// Não criamos dados pela própria API: a ideia é mostrar que dá para controlar
-/// o ESTADO INICIAL do banco diretamente.
+/// Cenário 1 — "Arrange direto no banco → chamada HTTP → Assert da API".
+/// O estado inicial do banco é controlado inserindo dados via DbContext,
+/// sem passar pela própria API.
 /// </summary>
 [Collection("Integration")]
 public class GetOrderEndpointTests(IntegrationTestFixture fixture)
@@ -28,7 +23,7 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
         // Garante um banco limpo para este teste.
         await _fixture.ResetDatabaseAsync();
 
-        // --- ARRANGE: insere cliente + produto + pedido DIRETAMENTE no PostgreSQL.
+        // --- Arrange: insere cliente + produto + pedido DIRETAMENTE no PostgreSQL.
         int createdOrderId;
         await using (var scope = _fixture.CreateScope())
         {
@@ -54,10 +49,10 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
             createdOrderId = order.Id;
         }
 
-        // --- ACT: chamada HTTP real (atravessa ASP.NET → Application → EF Core → PostgreSQL).
+        // --- Act: chamada HTTP real (ASP.NET → Application → EF Core → PostgreSQL).
         var response = await _fixture.Client.GetAsync($"/api/orders/{createdOrderId}");
 
-        // --- ASSERT: status e conteúdo calculados pela aplicação real.
+        // --- Assert: status e conteúdo calculados pela aplicação real.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<OrderResponse>();
@@ -66,7 +61,6 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
         body.Items.Should().HaveCount(1);
         body.Items[0].Quantity.Should().Be(3);
         body.Items[0].UnitPrice.Should().Be(10.50m);
-        // Total é CALCULADO pela aplicação a partir dos itens reais vindos do banco.
         body.Total.Should().Be(31.50m);
     }
 
@@ -75,20 +69,20 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
     {
         await _fixture.ResetDatabaseAsync();
 
-        // --- ACT: chama um id inexistente (banco vazio neste cenário).
+        // --- Act: id inexistente (banco vazio neste cenário).
         var response = await _fixture.Client.GetAsync("/api/orders/999");
 
-        // --- ASSERT.
+        // --- Assert.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
     }
 
     /// <summary>
-    /// REgRA DE NEGÓCIO #6 — o preço do pedido é "congelado" no ato da compra.
+    /// Regra de negócio #6 — o preço do pedido é "congelado" no ato da compra.
     /// Alterar o preço do produto DEPOIS não pode mudar o total de pedidos já criados.
     ///
-    /// DISCRIMINADOR do bug didático: se o total passar a usar o preço ATUAL do produto
-    /// (em vez do UnitPrice gravado), este teste falha — mas nenhum teste de unidade
-    /// percebe, porque mudanças de preço só acontecem no fluxo real (banco).
+    /// Discriminador do bug didático: se o total usar o preço ATUAL do produto (em vez
+    /// do UnitPrice gravado), este teste falha — e nenhum teste de unidade percebe,
+    /// porque mudanças de preço só acontecem no fluxo real (banco).
     /// </summary>
     [Fact]
     public async Task GetOrder_WhenProductPriceChangesAfterPurchase_ShouldKeepOriginalUnitPrice()
@@ -96,7 +90,7 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
         // Garante banco limpo.
         await _fixture.ResetDatabaseAsync();
 
-        // --- ARRANGE: cria produto (R$ 10,50) e um pedido com 3 unidades = total R$ 31,50.
+        // --- Arrange: produto (R$ 10,50) e um pedido com 3 unidades = total R$ 31,50.
         int orderId, productId;
         await using (var scope = _fixture.CreateScope())
         {
@@ -123,7 +117,7 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
             productId = product.Id;
         }
 
-        // --- PRE-ARRANGE: depois da compra, o preço do produto SOBE para R$ 88,00 no banco.
+        // --- Pré-arrange: depois da compra, o preço do produto sobe para R$ 88,00 no banco.
         await using (var scope = _fixture.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -132,10 +126,10 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
             await db.SaveChangesAsync();
         }
 
-        // --- ACT: GET do pedido criado ANTES da mudança de preço.
+        // --- Act: GET do pedido criado ANTES da mudança de preço.
         var response = await _fixture.Client.GetAsync($"/api/orders/{orderId}");
 
-        // --- ASSERT: total deve continuar o "congelado" (3 × 10,50), NÃO o preço novo.
+        // --- Assert: total deve continuar o "congelado" (3 × 10,50), NÃO o preço novo.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<OrderResponse>();
 

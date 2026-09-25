@@ -46,19 +46,19 @@ public class CreateOrderEndpointTests(IntegrationTestFixture fixture)
             (customerId, productId, _) = await ArrangeSeedAsync(db);
         }
 
-        // --- ACT: POST pela API (percorre as camadas reais, gateway simulado aprovou).
+        // --- Act: POST pela API, atravessando todas as camadas reais.
         var response = await _fixture.Client.PostAsJsonAsync("/api/orders", new
         {
             customerId,
             items = new[] { new { productId, quantity = 2 } },
         });
 
-        // --- ASSERT 1: resposta HTTP.
+        // --- Assert 1: resposta HTTP.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.Created);
         var createdOrderId = int.Parse(response.Headers.Location!.ToString().Split('/').Last());
 
-        // --- ASSERT 2: efeito real no banco — contexto NOVO + AsNoTracking.
-        //   (Garante que o dado vem do PostgreSQL, não do ChangeTracker.)
+        // --- Assert 2: efeito real no banco — contexto NOVO + AsNoTracking,
+        // garantindo que o dado vem do PostgreSQL e não do ChangeTracker.
         await using (var scope = _fixture.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -91,14 +91,14 @@ public class CreateOrderEndpointTests(IntegrationTestFixture fixture)
             (customerId, _, _) = await ArrangeSeedAsync(db);
         }
 
-        // --- ACT: POST referenciando um produto que NÃO existe no banco real.
+        // --- Act: POST referenciando um produto que NÃO existe no banco real.
         var response = await _fixture.Client.PostAsJsonAsync("/api/orders", new
         {
             customerId,
             items = new[] { new { productId = 99999, quantity = 1 } },
         });
 
-        // --- ASSERT 1: 400 (validação consultou o PostgreSQL de verdade).
+        // --- Assert: 400 (a validação consultou o PostgreSQL de verdade).
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
 
         // --- ASSERT 2: nada foi persistido.
@@ -121,24 +121,24 @@ public class CreateOrderEndpointTests(IntegrationTestFixture fixture)
             (customerId, productId, _) = await ArrangeSeedAsync(db);
         }
 
-        // --- ARRANGE DA DEPENDÊNCIA EXTERNA: fake que APROVA, injetado via factory.
+        // --- Arrange: fake que APROVA, injetado via factory (única dependência substituída).
         var fakeGateway = new FakePaymentGateway(approved: true);
         var client = CreateClientWith(fakeGateway);
 
-        // --- ACT.
+        // --- Act.
         var response = await client.PostAsJsonAsync("/api/orders", new
         {
             customerId,
             items = new[] { new { productId, quantity = 1 } },
         });
 
-        // --- ASSERT 1: 201 e gateway foi chamado UMA vez com o total correto.
+        // --- Assert 1: 201 e gateway chamado UMA vez com o total correto.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.Created);
         fakeGateway.Calls.Should().HaveCount(1);
         fakeGateway.Calls[0].Amount.Should().Be(15.90m);
         fakeGateway.Calls[0].CustomerId.Should().Be(customerId);
 
-        // --- ASSERT 2: banco persiste o pedido com status Aprovado.
+        // --- Assert 2: banco persiste o pedido com status Aprovado.
         var createdOrderId = int.Parse(response.Headers.Location!.ToString().Split('/').Last());
         await using (var scope = _fixture.CreateScope())
         {
@@ -160,24 +160,24 @@ public class CreateOrderEndpointTests(IntegrationTestFixture fixture)
             (customerId, productId, _) = await ArrangeSeedAsync(db);
         }
 
-        // --- ARRANGE DA DEPENDÊNCIA EXTERNA: fake que RECUSA.
+        // --- Arrange: fake que RECUSA.
         var fakeGateway = new FakePaymentGateway(approved: false);
         var client = CreateClientWith(fakeGateway);
 
-        // --- ACT.
+        // --- Act.
         var response = await client.PostAsJsonAsync("/api/orders", new
         {
             customerId,
             items = new[] { new { productId, quantity = 3 } },
         });
 
-        // --- ASSERT 1: 402 (pagamento recusado) — mas o pedido é persistido p/ auditoria.
+        // --- Assert 1: 402, mas o pedido é persistido para auditoria.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.PaymentRequired);
 
         // No caso recusado a API não retorna Location; o id vem no corpo.
         var refusedBody = await response.Content.ReadFromJsonAsync<RefusedBody>();
 
-        // --- ASSERT 2: banco guarda o pedido com status Recusado.
+        // --- Assert 2: banco guarda o pedido com status Recusado.
         var createdOrderId = refusedBody!.Order.Id;
         await using (var scope = _fixture.CreateScope())
         {

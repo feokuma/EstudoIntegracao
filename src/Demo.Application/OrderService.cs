@@ -32,7 +32,7 @@ public class OrderService(IAppDbContext db, IPaymentGateway paymentGateway)
     /// </summary>
     public async Task<CreateOrderResult> CreateOrderAsync(CreateOrderRequest request, CancellationToken ct = default)
     {
-        // Aprovação: bater no banco real — nada de in-memory aqui.
+        // A validação consulta o banco real — nada de in-memory aqui.
         var customer = await db.Customers
             .FirstOrDefaultAsync(c => c.Id == request.CustomerId, ct);
         if (customer is null)
@@ -73,8 +73,8 @@ public class OrderService(IAppDbContext db, IPaymentGateway paymentGateway)
 
         db.Orders.Add(order);
 
-        // Persiste tudo (pedido + itens) no PostgreSQL. É aqui que a aplicação
-        // "commita" o estado. Se faltar, nada é gravado no banco.
+        // Persiste tudo (pedido + itens) no PostgreSQL. Se faltar, nada é gravado
+        // no banco — e só o teste de integração percebe.
         await db.SaveChangesAsync(ct);
 
         return CreateOrderResult.Ok(order.ToResponse());

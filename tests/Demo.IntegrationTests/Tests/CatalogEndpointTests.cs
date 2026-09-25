@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Demo.IntegrationTests.Tests;
 
 /// <summary>
-/// REgRA DE NEGÓCIO #5 — unicidade de e-mail (cliente) e nome (produto).
+/// Regra de negócio #5 — unicidade de e-mail (cliente) e nome (produto).
 ///
 /// Duas frentes:
 ///   1. Via API: o service valida duplicidade e devolve 409 (checagem em tempo de request).
@@ -29,7 +29,7 @@ public class CatalogEndpointTests(IntegrationTestFixture fixture)
     {
         await _fixture.ResetDatabaseAsync();
 
-        // Arrange: cliente com e-mail X já existe.
+        // Arrange: cliente com o e-mail que será usado no POST já existe.
         var email = $"dupe-{Guid.NewGuid():N}@exemplo.com";
         await using (var scope = _fixture.CreateScope())
         {
@@ -38,7 +38,7 @@ public class CatalogEndpointTests(IntegrationTestFixture fixture)
             await db.SaveChangesAsync();
         }
 
-        // Act: POST com o mesmo e-mail — o service detecta a duplicidade.
+        // Act
         var response = await _fixture.Client.PostAsJsonAsync("/api/customers",
             new CreateCustomerRequest("Outra Pessoa", email));
 
@@ -65,6 +65,8 @@ public class CatalogEndpointTests(IntegrationTestFixture fixture)
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.Conflict);
     }
 
+    // Regra #5 via BANCO: o índice único do PostgreSQL é a garantia real —
+    // um fake em memória (teste de unidade) nunca consegue verificar isso.
     [Fact]
     public async Task CustomerEmail_UniqueConstraint_EnforcedByDatabase()
     {
@@ -91,7 +93,7 @@ public class CatalogEndpointTests(IntegrationTestFixture fixture)
         }
     }
 
-    /// <summary>DISCRIMINADOR da regra #5 (bug didático).</summary>
+    /// <summary>Regra #5 via BANCO (bug didático: discriminador entre os branchs).</summary>
     [Fact]
     public async Task ProductName_UniqueConstraint_EnforcedByDatabase()
     {

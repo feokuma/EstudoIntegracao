@@ -12,7 +12,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")
                       ?? "Host=localhost;Port=5432;Database=demo;Username=postgres;Password=postgres;"));
 
-// Expõe o DbContext pela interface da Application (mesma instância scoped).
+// Expõe o DbContext pela interface da Application.
 builder.Services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
 // Dependência EXTERNA mockável.
@@ -20,13 +20,12 @@ builder.Services.AddScoped<IPaymentGateway, SimulatedPaymentGateway>();
 
 builder.Services.AddScoped<OrderService>();
 
-// Página de documentação para demo ao vivo.
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 app.MapOpenApi();
-app.MapScalarApiReference(); // Scalar UI em /scalar/v1
+app.MapScalarApiReference();
 
 app.MapCustomerEndpoints();
 app.MapOrderEndpoints();
@@ -34,5 +33,5 @@ app.MapProductEndpoints();
 
 app.Run();
 
-// Necessário para que o WebApplicationFactory<Program> encontre a classe correta.
+// Necessário para que o WebApplicationFactory<Program> encontre a classe correta ¯\_(ツ)_/¯
 public partial class Program;

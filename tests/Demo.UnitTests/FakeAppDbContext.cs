@@ -5,15 +5,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Demo.UnitTests;
 
 /// <summary>
-/// FAKE do IAppDbContext usado SÓ nos testes de unidade.
-///
-/// ⚠️ CONTRASTE DIDÁTICO: baseado em EF Core InMemory (banco em memória).
-/// Como nada é gravado "de verdade", um bug de persistência — como esquecer de
-/// chamar SaveChangesAsync — passa despercebido aqui. Somente o teste de
-/// INTEGRAÇÃO, que consulta o PostgreSQL real via Testcontainers, consegue
-/// revelar esse problema.
-///
-/// NENHUM teste de integração usa este tipo.
+/// Fake do IAppDbContext usado SÓ nos testes de unidade, baseado em EF Core InMemory.
+/// Como nada é gravado "de verdade", um bug de persistência — como esquecer de chamar
+/// SaveChangesAsync — passa despercebido aqui. Somente o teste de INTEGRAÇÃO, que
+/// consulta o PostgreSQL real via Testcontainers, revela esse problema.
 /// </summary>
 public class FakeAppDbContext : DbContext, IAppDbContext
 {
@@ -21,9 +16,6 @@ public class FakeAppDbContext : DbContext, IAppDbContext
     public DbSet<Product> Products { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
     public DbSet<OrderItem> OrderItems { get; set; } = null!;
-
-    // DbSet<X> que o DbContext base não conhece por convenção de DbSet property
-    // já é descoberto; usamos DbSet<T> simples (InMemory não exige FK/ideias de banco).
 
     public FakeAppDbContext(DbContextOptions<FakeAppDbContext> options) : base(options)
     {
@@ -52,11 +44,9 @@ public class FakeAppDbContext : DbContext, IAppDbContext
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveChangesCalled = true;
-        // Persiste no banco em memória (para o pré-check de unicidade enxergar registros
-        // criados em chamadas anteriores). Atenção: EF Core InMemory NÃO impõe índices
-        // únicos — a duplicidade só pode ser evitada pela checagem no service, nunca por
-        // constraint. É exatamente esse limite que o teste de integração (PostgreSQL real)
-        // demonstra.
+        // Persiste no banco em memória, mas SEM impor índices únicos — a duplicidade
+        // só é barrada pela checagem no service. Esse limite é o que o teste de
+        // integração (PostgreSQL real) demonstra.
         return await base.SaveChangesAsync(cancellationToken);
     }
 }
