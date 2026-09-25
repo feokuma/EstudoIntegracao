@@ -24,7 +24,7 @@ HTTP → ASP.NET Core → Application → Domain → EF Core (Npgsql) → Postgr
 docker compose up -d
 # 2) Aguarde ficar "healthy" (docker compose ps)
 
-# 3) Aplica as migrations (cria as tabelas no banco acima — basta rodar uma vez)
+# 3) Aplica as migrations (cria as tabelas E insere dados de exemplo — basta rodar uma vez)
 dotnet dotnet-ef database update --project src/Demo.Infrastructure --startup-project src/Demo.Api
 
 # 4) Roda a aplicação (Scalar UI em /scalar/v1; a porta pode variar)
@@ -33,6 +33,11 @@ dotnet run --project src/Demo.Api
 
 Para parar: `docker compose down` (dados ficam no volume) ou `docker compose down -v` (apaga dados).
 As credenciais do compose coincidem com a `ConnectionStrings:Default` do `appsettings.json`.
+
+**Dados de exemplo:** a migration `SeedData` popula o banco com 6 clientes, 10 produtos
+e 6 pedidos com itens (status aprovado/recusado/pendente). O seed roda automaticamente no
+`database update`, e após aplicá-lo a API já tem dados para demonstrar no GET `/api/orders/{id}`
+e `/api/products`.
 
 Os testes de integração **não** usam esse Postgres local — cada execução sobe o
 próprio container isolado via Testcontainers, com porta efêmera (sem conflito).
