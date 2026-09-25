@@ -10,6 +10,34 @@ HTTP → ASP.NET Core → Application → Domain → EF Core (Npgsql) → Postgr
 
 ---
 
+## Visão de negócio
+
+Trata-se de uma **loja online simplificada** (e-commerce): um catálogo de produtos,
+clientes cadastrados e a criação de pedidos de compra. O fluxo principal é:
+
+1. O cliente escolhe **produtos** com quantidade.
+2. O sistema valida que o **cliente existe** e que **todos os produtos existem**.
+3. O pedido é montado com o **total calculado a partir dos itens** (nunca armazenado).
+4. Uma **gateway de pagamento** externa é chamada e decide o **status do pedido**
+   (`Pending` → `PaymentApproved` ou `PaymentRefused`).
+5. Pedido e itens são **persistidos no PostgreSQL**, junto com o resultado da cobrança.
+
+Para a palestra, o que importa são as **regras de negócio** que os testes validam:
+
+| Regra de negócio | O que garante | Onde é validado |
+|---|---|---|
+| Total sempre calculado | O valor do pedido reflete exatamente os itens no banco, sem campo "total" gravado que possa dessincronizar | `Order.Total` + testes de integração |
+| Preço congelado no item | O `UnitPrice` é capturado **no momento da compra**; mudanças futuras de preço do produto não alteram pedidos antigos | `AddItem()` + teste de integração |
+| Unicidade de e-mail/nome | Cada cliente tem e-mail único e cada produto tem nome único | Validação no service + **índice único no banco** |
+| Status vem da gateway | Pedido aprovado/recusado reflete a resposta real da cobrança | `IPaymentGateway` + mocks nos testes |
+| Rejeição de pedidos inválidos | Cliente ou produto inexistente → erro (404/400) e **nada é persistido** | `CreateOrderAsync()` |
+
+Ou seja: os testes de integração **não** validam código arbitrário — eles provam que
+essas regras de negócio continuam funcionando com a stack completa (HTTP, EF Core e
+PostgreSQL reais), inclusive em cenários que um fake em memória não consegue enxergar.
+
+---
+
 ## Pré-requisitos
 
 - SDK **.NET 10**
@@ -38,6 +66,30 @@ As credenciais do compose coincidem com a `ConnectionStrings:Default` do `appset
 e 6 pedidos com itens (status aprovado/recusado/pendente). O seed roda automaticamente no
 `database update`, e após aplicá-lo a API já tem dados para demonstrar no GET `/api/orders/{id}`
 e `/api/products`.
+
+### Requisições prontas no Scalar
+
+Todos os endpoints têm **exemplos pré-preenchidos** (`.AddOpenApiOperationTransformer` com
+`examples` no OpenAPI) usando exatamente os IDs do seed — basta clicar no exemplo e
+"Send" na UI em `/scalar/v1`:
+
+| Endpoint | Exemplo no Scalar | Resultado esperado |
+|---|---|---|
+| `GET /api/orders/{id}` | `id = 1` (Ana Souza) | **200** — aprovado, 2 itens, total **19.90** (calculado) |
+| `GET /api/orders/{id}` | `id = 2` / `4` / `6` | **200** — recusado / pendente / recusado |
+| `GET /api/orders/{id}` | `id = 999` | **404** |
+| `GET /api/products` | — | **200** — lista dos 10 produtos do seed |
+| `POST /api/orders/` | `Pedido válido` (cust. 1 + Caneta ×2 + Caderno ×1) | **201** — total 19.90, igual ao pedido 1 |
+| `POST /api/orders/` | `Cliente inexistente` (id 999) | **400** — nada persistido |
+| `POST /api/orders/` | `Produto inexistente` (id 999) | **400** — nada persistido |
+| `POST /api/customers/` | `Cliente novo` (gabi@exemplo.com) | **201** |
+| `POST /api/customers/` | `E-mail duplicado` (ana@exemplo.com) | **409** — regra #5 (índice único) |
+| `POST /api/products/` | `Produto novo` (Tesoura Escolar) | **201** |
+| `POST /api/products/` | `Nome duplicado` (Caneta BIC) | **409** — regra #5 (índice único) |
+
+> **Atenção para a demo:** a `SimulatedPaymentGateway` **sempre aprova** em runtime, então todo
+> `POST /api/orders` válido retorna **201**. Os status recusado/pendente aparecem via **GET**
+> nos pedidos 2, 4 e 6 do seed — use-os para mostrar a regra "status vem da gateway".
 
 Os testes de integração **não** usam esse Postgres local — cada execução sobe o
 próprio container isolado via Testcontainers, com porta efêmera (sem conflito).
