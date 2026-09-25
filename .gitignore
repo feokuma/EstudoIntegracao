@@ -1,0 +1,16 @@
+# .NET build outputs
+bin/
+obj/
+*.user
+
+# Rider/VS
+.idea/
+.vs/
+
+# Tool local (dotnet-ef) — deixa o manifest, não os binários
+.dotnet/
+tools/
+*.tmp
+
+# OS
+.DS_Store

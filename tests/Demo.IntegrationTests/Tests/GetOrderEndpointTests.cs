@@ -1,0 +1,84 @@
+using System.Net.Http.Json;
+using Demo.Application.Dtos;
+using Demo.Domain;
+using Demo.Infrastructure;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Demo.IntegrationTests.Tests;
+
+/// <summary>
+/// CENÁRIO 1 — "Arrange direto no banco → chamada HTTP → Assert da API".
+///
+///   TEST → insere dados no PostgreSQL via DbContext (Arrange)
+///        → GET via HttpClient (atravessa as camadas reais)
+///        → valida status e conteúdo da resposta (Assert).
+///
+/// Não criamos dados pela própria API: a ideia é mostrar que dá para controlar
+/// o ESTADO INICIAL do banco diretamente.
+/// </summary>
+[Collection("Integration")]
+public class GetOrderEndpointTests(IntegrationTestFixture fixture)
+{
+    private readonly IntegrationTestFixture _fixture = fixture;
+
+    [Fact]
+    public async Task GetOrder_WhenOrderExists_ShouldReturnOrderWithItemsAndTotal()
+    {
+        // Garante um banco limpo para este teste.
+        await _fixture.ResetDatabaseAsync();
+
+        // --- ARRANGE: insere cliente + produto + pedido DIRETAMENTE no PostgreSQL.
+        int createdOrderId;
+        await using (var scope = _fixture.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var customer = new Customer { Name = "Ana Souza", Email = "ana@exemplo.com" };
+            var product = new Product { Name = "Caneta", Price = 10.50m };
+            db.Customers.Add(customer);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+
+            var order = new Order
+            {
+                CustomerId = customer.Id,
+                Customer = customer,
+                Status = OrderStatus.PaymentApproved,
+                CreatedAt = DateTime.UtcNow,
+            };
+            order.AddItem(product, 3); // 3 × 10,50 = 31,50
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            createdOrderId = order.Id;
+        }
+
+        // --- ACT: chamada HTTP real (atravessa ASP.NET → Application → EF Core → PostgreSQL).
+        var response = await _fixture.Client.GetAsync($"/api/orders/{createdOrderId}");
+
+        // --- ASSERT: status e conteúdo calculados pela aplicação real.
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<OrderResponse>();
+        body!.Id.Should().Be(createdOrderId);
+        body.CustomerName.Should().Be("Ana Souza");
+        body.Items.Should().HaveCount(1);
+        body.Items[0].Quantity.Should().Be(3);
+        body.Items[0].UnitPrice.Should().Be(10.50m);
+        // Total é CALCULADO pela aplicação a partir dos itens reais vindos do banco.
+        body.Total.Should().Be(31.50m);
+    }
+
+    [Fact]
+    public async Task GetOrder_WhenOrderDoesNotExist_ShouldReturnNotFound()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        // --- ACT: chama um id inexistente (banco vazio neste cenário).
+        var response = await _fixture.Client.GetAsync("/api/orders/999");
+
+        // --- ASSERT.
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
+    }
+}

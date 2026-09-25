@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Runner MTP (Microsoft.Testing.Platform) do .NET 10 — precisa de executável. -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <!-- O analisador xUnit1051 pede para propagar um CancellationToken no código de teste;
+         suprimimos para manter o Arrange/Act/Assert legível na palestra. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Demo.Application\Demo.Application.csproj" />
+    <ProjectReference Include="..\..\src\Demo.Domain\Demo.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+    <!-- FluentAssertions 7.2.0 por licença Apache 2.0 (a 8.x é licença comercial). -->
+    <PackageReference Include="FluentAssertions" Version="7.2.0" />
+    <!-- APENAS para o FAKE dos testes de unidade. NUNCA usado nos testes de integração
+         (que rodam contra PostgreSQL real via Testcontainers). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
