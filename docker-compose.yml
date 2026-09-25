@@ -1,0 +1,37 @@
+# Banco PostgreSQL local para rodar a API da demo (fora dos testes).
+#
+# As credenciais abaixo correspondem à "ConnectionStrings:Default" em
+# src/Demo.Api/appsettings.json: Host=localhost, Database=demo, user/postgres senha postgres.
+#
+# Uso:
+#   docker compose up -d                 # sobe o banco
+#   docker compose ps                    # status (saúde via healthcheck)
+#   dotnet dotnet-ef database update     # aplica as migrations (tabelas prontas)
+#   dotnet run --project src/Demo.Api    # roda a aplicação (Scalar em /scalar/v1)
+#   docker compose down                  # para (dados ficam no volume)
+#   docker compose down -v               # para e apaga os dados do volume
+#
+# Obs.: os TESTES de integração NÃO usam este container — eles sobem um
+# PostgreSQL isolado via Testcontainers com porta efêmera, então não há conflito.
+services:
+  db:
+    image: postgres:17
+    container_name: palestra-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: demo
+    ports:
+      - "5432:5432"
+    volumes:
+      - palestra_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+# Dados do banco persistem mesmo após `docker compose down` (não usa -v).
+volumes:
+  palestra_pgdata:
