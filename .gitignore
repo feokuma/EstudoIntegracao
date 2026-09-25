@@ -14,3 +14,6 @@ tools/
 
 # OS
 .DS_Store
+
+# Resultados de testes
+TestResults/
