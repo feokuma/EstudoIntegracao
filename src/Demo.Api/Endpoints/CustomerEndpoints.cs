@@ -1,5 +1,7 @@
+using System.Text.Json.Nodes;
 using Demo.Application;
 using Demo.Application.Dtos;
+using Microsoft.OpenApi;
 
 namespace Demo.Api.Endpoints;
 
@@ -16,7 +18,39 @@ public static class CustomerEndpoints
                     : Results.Conflict(new { error = result.Error });
             })
             .WithTags("Customers")
-            .WithName("CreateCustomer");
+            .WithName("CreateCustomer")
+            .AddOpenApiOperationTransformer((operation, _, _) =>
+            {
+                if (operation.RequestBody is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                // A interface IOpenApiRequestBody é read-only; o tipo concreto tem setter.
+                var body = (OpenApiRequestBody)operation.RequestBody;
+                var content = body.Content ??= new Dictionary<string, OpenApiMediaType>();
+                content.TryAdd("application/json", new OpenApiMediaType());
+                var media = content["application/json"]!;
+                media.Examples ??= new Dictionary<string, IOpenApiExample>();
+
+                // E-mail novo -> 201 (sequência ajustada no seed, próximo Id = 7).
+                media.Examples["cliente-novo-201"] = new OpenApiExample
+                {
+                    Summary = "Cliente novo — 201",
+                    Value = JsonNode.Parse("""{ "name": "Gabriela Nunes", "email": "gabi@exemplo.com" }"""),
+                };
+
+                // E-mail do seed (Ana Souza) -> regra #5 validada no service + índice único no banco: 409.
+                media.Examples["email-duplicado-409"] = new OpenApiExample
+                {
+                    Summary = "E-mail duplicado — 409 (regra #5)",
+                    Value = JsonNode.Parse("""{ "name": "Ana Souza", "email": "ana@exemplo.com" }"""),
+                };
+
+                // Exemplo padrão que o Scalar pré-preenche ao abrir o request.
+                media.Example = media.Examples["cliente-novo-201"].Value;
+                return Task.CompletedTask;
+            });
 
         return app;
     }

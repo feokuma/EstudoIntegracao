@@ -1,5 +1,7 @@
+using System.Text.Json.Nodes;
 using Demo.Application;
 using Demo.Application.Dtos;
+using Microsoft.OpenApi;
 
 namespace Demo.Api.Endpoints;
 
@@ -9,6 +11,7 @@ public static class ProductEndpoints
     {
         var group = app.MapGroup("/api/products").WithTags("Products");
 
+        // Lista os 10 produtos do seed (GET simples, sem parâmetros).
         group.MapGet("/", async (OrderService service, CancellationToken ct) =>
                 Results.Ok(await service.GetProductsAsync(ct)))
             .WithName("ListProducts");
@@ -20,7 +23,39 @@ public static class ProductEndpoints
                     ? Results.Created($"/api/products/{result.Product!.Id}", result.Product)
                     : Results.Conflict(new { error = result.Error });
             })
-            .WithName("CreateProduct");
+            .WithName("CreateProduct")
+            .AddOpenApiOperationTransformer((operation, _, _) =>
+            {
+                if (operation.RequestBody is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                // A interface IOpenApiRequestBody é read-only; o tipo concreto tem setter.
+                var body = (OpenApiRequestBody)operation.RequestBody;
+                var content = body.Content ??= new Dictionary<string, OpenApiMediaType>();
+                content.TryAdd("application/json", new OpenApiMediaType());
+                var media = content["application/json"]!;
+                media.Examples ??= new Dictionary<string, IOpenApiExample>();
+
+                // Produto novo -> 201 (sequência ajustada no seed, próximo Id = 11).
+                media.Examples["produto-novo-201"] = new OpenApiExample
+                {
+                    Summary = "Produto novo — 201",
+                    Value = JsonNode.Parse("""{ "name": "Tesoura Escolar", "price": 7.99 }"""),
+                };
+
+                // Nome do seed (Caneta BIC) -> regra #5 validada no service + índice único no banco: 409.
+                media.Examples["nome-duplicado-409"] = new OpenApiExample
+                {
+                    Summary = "Nome duplicado — 409 (regra #5)",
+                    Value = JsonNode.Parse("""{ "name": "Caneta BIC", "price": 9.99 }"""),
+                };
+
+                // Exemplo padrão que o Scalar pré-preenche ao abrir o request.
+                media.Example = media.Examples["produto-novo-201"].Value;
+                return Task.CompletedTask;
+            });
 
         return app;
     }
