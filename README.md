@@ -168,8 +168,11 @@ valor de retorno; o teste de integração consulta o **PostgreSQL real**.
 ```bash
 git checkout demo/integration-only-bug   # vê o teste quebrar
 dotnet test --solution PalestraIntegracao.slnx
-# → os 3 testes de unidade passam
-# → os testes de integração que conferem PERSISTÊNCIA falham
+# → os 5 testes de unidade passam
+# → os 3 testes de integração que conferem PERSISTÊNCIA falham:
+#      - CreateOrderEndpointTests.CreateOrder_WithValidRequest_ShouldPersistOrder
+#      - CreateOrderEndpointTests.CreateOrder_WhenPaymentGatewayApproves_ShouldPersistOrderWithApprovedStatus
+#      - CreateOrderEndpointTests.CreateOrder_WhenPaymentGatewayRefuses_ShouldReturn402AndPersistOrderWithRefusedStatus
 
 # "correção" ao vivo: adicionar o SaveChangesAsync ausente no OrderService
 
