@@ -17,18 +17,25 @@ HTTP → ASP.NET Core → Application → Domain → EF Core (Npgsql) → Postgr
 
 ---
 
-## Rodar a API (opcional, para ver os endpoints ao vivo)
+## Rodar a API (PostgreSQL local via docker compose)
 
 ```bash
-# (recomendado) um PostgreSQL local em docker só pra rodar a API:
-docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:17
+# 1) Sobe o banco PostgreSQL (imagem postgres:17, ver docker-compose.yml)
+docker compose up -d
+# 2) Aguarde ficar "healthy" (docker compose ps)
 
+# 3) Aplica as migrations (cria as tabelas no banco acima — basta rodar uma vez)
+dotnet dotnet-ef database update --project src/Demo.Infrastructure --startup-project src/Demo.Api
+
+# 4) Roda a aplicação (Scalar UI em /scalar/v1; a porta pode variar)
 dotnet run --project src/Demo.Api
-# Scalar UI: http://localhost:5000/scalar/v1  (a porta pode variar)
 ```
 
+Para parar: `docker compose down` (dados ficam no volume) ou `docker compose down -v` (apaga dados).
+As credenciais do compose coincidem com a `ConnectionStrings:Default` do `appsettings.json`.
+
 Os testes de integração **não** usam esse Postgres local — cada execução sobe o
-próprio container isolado via Testcontainers.
+próprio container isolado via Testcontainers, com porta efêmera (sem conflito).
 
 ## Rodar os testes
 
