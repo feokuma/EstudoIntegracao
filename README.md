@@ -223,10 +223,9 @@ relacionados às regras de negócio #5 (unicidade) e #6 (preço congelado):
 git checkout demo/unit-vs-integration
 dotnet test --solution EstudoIntegracao.slnx
 # → 5 testes de unidade PASSAM
-# → 2 testes de integração FALHAM, exatamente os que dependem do banco real:
-#      - CatalogEndpointTests.ProductName_UniqueConstraint_EnforcedByDatabase
+# → 1 teste de integração de negócio FALHA, dependente do banco real:
 #      - GetOrderEndpointTests.GetOrder_WhenProductPriceChangesAfterPurchase_ShouldKeepOriginalUnitPrice
-# → também o teste de CONTRATO C4 falha, apontando direto à persistência:
+# → e o teste de CONTRATO C4 falha, apontando direto à persistência:
 #      - PostgresAppDbContextContractTests.Product_NameUniqueIndex_IsEnforcedByPersistence
 ```
 
