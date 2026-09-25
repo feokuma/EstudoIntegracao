@@ -115,6 +115,7 @@ src/
 tests/
   Demo.UnitTests/       Testes de unidade (FAKE em memória) — contraste com integração
   Demo.IntegrationTests/ Testcontainers + WebApplicationFactory + PostgreSQL real
+                        + suíte de CONTRATO (IAppDbContext) contra as 2 implementações
 ```
 
 ### Infraestrutura dos testes de integração
@@ -151,6 +152,36 @@ CustomWebApplicationFactory : WebApplicationFactory<Program>
 
 Em todos: HTTP, ASP.NET Core, Application, Domain, EF Core e PostgreSQL são **reais**;
 o único componente substituível é `IPaymentGateway`.
+
+### Testes de CONTRATO (Application ⇄ Persistência)
+
+Entre os testes de unidade (um módulo, fakes em tudo) e os de integração (toda a
+pilha), existe um terceiro nível: **testar o contrato entre DUAS classes,
+desconsiderando o resto do sistema**. A suíte `AppDbContextContractTests` (em
+`Demo.IntegrationTests/ContractTests`) é escrita **uma vez** e executada contra
+**cada implementação** de `IAppDbContext`:
+
+| Contrato assumido pela Application | Código que o valida |
+|---|---|
+| C1. O que uma instância salva é visível a outra | `Customer_PersistedByOneContext_IsVisibleToAnotherContext` |
+| C2. `SaveChangesAsync` não é opcional | `Order_WithoutSaveChanges_IsNotPersisted` (pega o bug do branch `demo/integration-only-bug`) |
+| C3. E-mail de cliente é único — imposto pela persistência | `Customer_EmailUniqueIndex_IsEnforcedByPersistence` |
+| C4. Nome de produto é único (regra #5) | `Product_NameUniqueIndex_IsEnforcedByPersistence` (pega o bug do branch `demo/unit-vs-integration`) |
+| C5. E-mail é NOT NULL no schema | `Customer_SavingWithoutEmail_IsRejectedByPersistence` |
+
+**Execuções da mesma suíte:**
+
+- `PostgresAppDbContextContractTests` — `AppDbContext` (Npgsql) + PostgreSQL real
+  (Testcontainers). É esta execução que "quebra" nos branches de demonstração.
+- `FakeAppDbContextContractTests` — o fake InMemory da suíte de unidade. Aqui está
+  o contraste consciente: os contratos que o provider InMemory **não pode
+  sustentar** (C3, C4, C5 — ele nem avalia índices/constraints) caem como
+  **SKIPPED com motivo legível** (via `SkipExceptions` do xUnit v3 +
+  `PersistenceCapabilityException`) — nunca um falso-verde.
+
+Na prática: essa suíte detecta ambos os bugs didáticos **com diagnóstico
+preciso** ("o índice único prometido não existe"), onde antes a falha aparecia
+distante, num cenário de negócio a jusante.
 
 ### Demo.UnitTests
 
