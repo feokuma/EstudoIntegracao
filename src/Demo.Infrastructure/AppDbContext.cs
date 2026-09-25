@@ -32,6 +32,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.ToTable("Products");
             e.Property(p => p.Name).IsRequired().HasMaxLength(120);
             e.Property(p => p.Price).HasPrecision(10, 2);
+            // Regra de negócio #5: nome de produto ÚNICO. Além da validação no service,
+            // o banco garante a unicidade (o teste de integração que insere duplicidade
+            // direto no DB depende deste índice — teste de unidade com fake em memória não o verifica).
+            e.HasIndex(p => p.Name).IsUnique();
         });
 
         modelBuilder.Entity<Order>(e =>

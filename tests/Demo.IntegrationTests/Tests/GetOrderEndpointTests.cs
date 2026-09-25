@@ -81,4 +81,66 @@ public class GetOrderEndpointTests(IntegrationTestFixture fixture)
         // --- ASSERT.
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
     }
+
+    /// <summary>
+    /// REgRA DE NEGÓCIO #6 — o preço do pedido é "congelado" no ato da compra.
+    /// Alterar o preço do produto DEPOIS não pode mudar o total de pedidos já criados.
+    ///
+    /// DISCRIMINADOR do bug didático: se o total passar a usar o preço ATUAL do produto
+    /// (em vez do UnitPrice gravado), este teste falha — mas nenhum teste de unidade
+    /// percebe, porque mudanças de preço só acontecem no fluxo real (banco).
+    /// </summary>
+    [Fact]
+    public async Task GetOrder_WhenProductPriceChangesAfterPurchase_ShouldKeepOriginalUnitPrice()
+    {
+        // Garante banco limpo.
+        await _fixture.ResetDatabaseAsync();
+
+        // --- ARRANGE: cria produto (R$ 10,50) e um pedido com 3 unidades = total R$ 31,50.
+        int orderId, productId;
+        await using (var scope = _fixture.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var customer = new Customer { Name = "Ana Souza", Email = "ana-frozen@exemplo.com" };
+            var product = new Product { Name = $"Caneta-Frozen-{Guid.NewGuid():N}", Price = 10.50m };
+            db.Customers.Add(customer);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+
+            var order = new Order
+            {
+                CustomerId = customer.Id,
+                Customer = customer,
+                Status = OrderStatus.PaymentApproved,
+                CreatedAt = DateTime.UtcNow,
+            };
+            order.AddItem(product, 3);
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            orderId = order.Id;
+            productId = product.Id;
+        }
+
+        // --- PRE-ARRANGE: depois da compra, o preço do produto SOBE para R$ 88,00 no banco.
+        await using (var scope = _fixture.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var product = await db.Products.FindAsync(productId);
+            product!.Price = 88.00m;
+            await db.SaveChangesAsync();
+        }
+
+        // --- ACT: GET do pedido criado ANTES da mudança de preço.
+        var response = await _fixture.Client.GetAsync($"/api/orders/{orderId}");
+
+        // --- ASSERT: total deve continuar o "congelado" (3 × 10,50), NÃO o preço novo.
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<OrderResponse>();
+
+        body!.Items.Should().ContainSingle();
+        body.Items[0].UnitPrice.Should().Be(10.50m); // preço do ato da compra
+        body.Total.Should().Be(31.50m);              // 3 × 10,50 (e NÃO 3 × 88,00)
+    }
 }

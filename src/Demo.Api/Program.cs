@@ -28,6 +28,7 @@ var app = builder.Build();
 app.MapOpenApi();
 app.MapScalarApiReference(); // Scalar UI em /scalar/v1
 
+app.MapCustomerEndpoints();
 app.MapOrderEndpoints();
 app.MapProductEndpoints();
 

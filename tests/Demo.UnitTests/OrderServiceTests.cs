@@ -83,6 +83,40 @@ public class OrderServiceTests
         result.Order!.Status.Should().Be(nameof(OrderStatus.PaymentRefused));
     }
 
+    // ---- Regra de negócio #5: unicidade de e-mail / nome de produto ----
+    // Estes testes de unidade validam a checagem NO SERVICE (AnyAsync no fake).
+    // Eles passam mesmo no branch de demonstração, porque o fake em memória NUNCA
+    // impõe a constraint de unicidade — a garantia real está só no banco (PostgreSQL).
+    [Fact]
+    public async Task CreateCustomer_WhenEmailAlreadyExists_ShouldReturnFailure()
+    {
+        // Arrange
+        var db = FakeAppDbContext.Create(customers: [new Customer { Name = "Ana", Email = "ana@x.com" }]);
+        var service = new OrderService(db, new SpyPaymentGateway());
+
+        // Act — mesmo email de um cliente já existente.
+        var result = await service.CreateCustomerAsync(new Application.Dtos.CreateCustomerRequest("Outra", "ana@x.com"));
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("ana@x.com");
+    }
+
+    [Fact]
+    public async Task CreateProduct_WhenNameAlreadyExists_ShouldReturnFailure()
+    {
+        // Arrange
+        var db = FakeAppDbContext.Create(products: [new Product { Name = "Caneta", Price = 3m }]);
+        var service = new OrderService(db, new SpyPaymentGateway());
+
+        // Act — mesmo nome de um produto já existente.
+        var result = await service.CreateProductAsync(new Application.Dtos.CreateProductRequest("Caneta", 4m));
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("Caneta");
+    }
+
     /// <summary>Fake simples do gateway: registra as chamadas e configura a aprovação.</summary>
     private sealed class SpyPaymentGateway(bool approved = true) : IPaymentGateway
     {

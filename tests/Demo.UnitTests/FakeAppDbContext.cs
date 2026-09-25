@@ -49,10 +49,14 @@ public class FakeAppDbContext : DbContext, IAppDbContext
         return db;
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveChangesCalled = true;
-        // Em memória não há nada para "commitar" de fato.
-        return Task.FromResult(0);
+        // Persiste no banco em memória (para o pré-check de unicidade enxergar registros
+        // criados em chamadas anteriores). Atenção: EF Core InMemory NÃO impõe índices
+        // únicos — a duplicidade só pode ser evitada pela checagem no service, nunca por
+        // constraint. É exatamente esse limite que o teste de integração (PostgreSQL real)
+        // demonstra.
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }

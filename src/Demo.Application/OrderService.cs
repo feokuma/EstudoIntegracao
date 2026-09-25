@@ -89,4 +89,42 @@ public class OrderService(IAppDbContext db, IPaymentGateway paymentGateway)
             .Select(p => new ProductResponse(p.Id, p.Name, p.Price))
             .ToListAsync(ct);
     }
+
+    /// <summary>
+    /// POST /api/customers — Regra #5: email ÚNICO.
+    /// A regra é validada aqui (camada de aplicação) e reforçada por índice único no banco.
+    /// </summary>
+    public async Task<CreateCustomerResult> CreateCustomerAsync(CreateCustomerRequest request, CancellationToken ct = default)
+    {
+        var duplicate = await db.Customers.AnyAsync(c => c.Email == request.Email, ct);
+        if (duplicate)
+        {
+            return CreateCustomerResult.Fail($"Já existe um cliente com o e-mail {request.Email}.");
+        }
+
+        var customer = new Customer { Name = request.Name, Email = request.Email };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync(ct);
+
+        return CreateCustomerResult.Ok(new CustomerResponse(customer.Id, customer.Name, customer.Email));
+    }
+
+    /// <summary>
+    /// POST /api/products — Regra #5: nome do produto ÚNICO.
+    /// Igual ao cliente: validação no service + índice único no banco (a garantia real).
+    /// </summary>
+    public async Task<CreateProductResult> CreateProductAsync(CreateProductRequest request, CancellationToken ct = default)
+    {
+        var duplicate = await db.Products.AnyAsync(p => p.Name == request.Name, ct);
+        if (duplicate)
+        {
+            return CreateProductResult.Fail($"Já existe um produto com o nome {request.Name}.");
+        }
+
+        var product = new Product { Name = request.Name, Price = request.Price };
+        db.Products.Add(product);
+        await db.SaveChangesAsync(ct);
+
+        return CreateProductResult.Ok(new ProductResponse(product.Id, product.Name, product.Price));
+    }
 }
