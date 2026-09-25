@@ -17,8 +17,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Demo.Api\Demo.Api.csproj" />
     <ProjectReference Include="..\..\src\Demo.Infrastructure\Demo.Infrastructure.csproj" />
+    <!-- Para a suíte de CONTRATO: a implementação FAKE (FakeAppDbContext) vive no
+         projeto de testes de unidade, e a suíte abstrata roda contra as duas. -->
+    <ProjectReference Include="..\Demo.UnitTests\Demo.UnitTests.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="4.0.1" />
     <PackageReference Include="FluentAssertions" Version="7.2.0" />

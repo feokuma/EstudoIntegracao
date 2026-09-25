@@ -24,13 +24,16 @@ public class FakeAppDbContext : DbContext, IAppDbContext
     /// <summary>True = a chamada a SaveChangesAsync foi registrada (mas não persiste nada).</summary>
     public bool SaveChangesCalled { get; private set; }
 
-    /// <summary>Cria um fake já conectado a um banco em memória e com os dados básicos.</summary>
+    /// <summary>Cria um fake já conectado a um banco em memória e com os dados básicos.
+    /// Um `databaseName` compartilhado permite simular duas instalações do contexto
+    /// apontando para o MESMO banco (usado pela suíte de contrato).</summary>
     public static FakeAppDbContext Create(
         IEnumerable<Customer>? customers = null,
-        IEnumerable<Product>? products = null)
+        IEnumerable<Product>? products = null,
+        string? databaseName = null)
     {
         var options = new DbContextOptionsBuilder<FakeAppDbContext>()
-            .UseInMemoryDatabase($"demo-unit-{Guid.NewGuid():N}")
+            .UseInMemoryDatabase(databaseName ?? $"demo-unit-{Guid.NewGuid():N}")
             .Options;
 
         var db = new FakeAppDbContext(options);
