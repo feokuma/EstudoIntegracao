@@ -16,7 +16,7 @@ namespace Demo.IntegrationTests;
 ///   1. Sobrescreve a connection string da configuração com a do container;
 ///   2. (opcional) substitui APENAS o IPaymentGateway por um fake.
 ///
-/// Durante a palestra: mostra que HTTP → ASP.NET Core → Application → Domain →
+/// Nesta aplicação de estudo: mostra que HTTP → ASP.NET Core → Application → Domain →
 /// EF Core → PostgreSQL continuam 100% REAIS; só a dependência externa é trocada.
 /// </summary>
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>

@@ -10,7 +10,7 @@
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <!-- O analisador xUnit1051 pede para propagar um CancellationToken no código de teste;
-         suprimimos para manter o Arrange/Act/Assert legível na palestra. -->
+         suprimimos para manter o Arrange/Act/Assert legível no estudo. -->
     <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 

@@ -1,6 +1,6 @@
 # Demo — Testes de Integração com .NET 10 (Loja/Pedidos)
 
-Aplicação de demonstração para uma palestra sobre **testes de integração com .NET 10**.
+Aplicação de **estudo** sobre **testes de integração com .NET 10**.
 A arquitetura foi pensada para ser pequena e didática, mas com integrações reais:
 HTTP → ASP.NET Core → Application → Domain → EF Core (Npgsql) → PostgreSQL real em container.
 
@@ -22,7 +22,7 @@ clientes cadastrados e a criação de pedidos de compra. O fluxo principal é:
    (`Pending` → `PaymentApproved` ou `PaymentRefused`).
 5. Pedido e itens são **persistidos no PostgreSQL**, junto com o resultado da cobrança.
 
-Para a palestra, o que importa são as **regras de negócio** que os testes validam:
+Para o estudo, o que importa são as **regras de negócio** que os testes validam:
 
 | Regra de negócio | O que garante | Onde é validado |
 |---|---|---|
@@ -64,7 +64,7 @@ As credenciais do compose coincidem com a `ConnectionStrings:Default` do `appset
 
 **Dados de exemplo:** a migration `SeedData` popula o banco com 6 clientes, 10 produtos
 e 6 pedidos com itens (status aprovado/recusado/pendente). O seed roda automaticamente no
-`database update`, e após aplicá-lo a API já tem dados para demonstrar no GET `/api/orders/{id}`
+`database update`, e após aplicá-lo a API já tem dados para explorar no GET `/api/orders/{id}`
 e `/api/products`.
 
 ### Requisições prontas no Scalar
@@ -87,9 +87,9 @@ Todos os endpoints têm **exemplos pré-preenchidos** (`.AddOpenApiOperationTran
 | `POST /api/products/` | `Produto novo` (Tesoura Escolar) | **201** |
 | `POST /api/products/` | `Nome duplicado` (Caneta BIC) | **409** — regra #5 (índice único) |
 
-> **Atenção para a demo:** a `SimulatedPaymentGateway` **sempre aprova** em runtime, então todo
+> **Nota:** a `SimulatedPaymentGateway` **sempre aprova** em runtime, então todo
 > `POST /api/orders` válido retorna **201**. Os status recusado/pendente aparecem via **GET**
-> nos pedidos 2, 4 e 6 do seed — use-os para mostrar a regra "status vem da gateway".
+> nos pedidos 2, 4 e 6 do seed — use-os para observar a regra "status vem da gateway".
 
 Os testes de integração **não** usam esse Postgres local — cada execução sobe o
 próprio container isolado via Testcontainers, com porta efêmera (sem conflito).
@@ -97,7 +97,7 @@ próprio container isolado via Testcontainers, com porta efêmera (sem conflito)
 ## Rodar os testes
 
 ```bash
-dotnet test --solution PalestraIntegracao.slnx
+dotnet test --solution EstudoIntegracao.slnx
 ```
 
 Primeira execução baixa a imagem `postgres:17` (fica em cache para as próximas).
@@ -137,7 +137,7 @@ CustomWebApplicationFactory : WebApplicationFactory<Program>
 
 ---
 
-## Os testes e o que cada um demonstra
+## Os testes e o que cada sequência cobre
 
 ### Demo.IntegrationTests
 
@@ -172,7 +172,7 @@ desconsiderando o resto do sistema**. A suíte `AppDbContextContractTests` (em
 **Execuções da mesma suíte:**
 
 - `PostgresAppDbContextContractTests` — `AppDbContext` (Npgsql) + PostgreSQL real
-  (Testcontainers). É esta execução que "quebra" nos branches de demonstração.
+  (Testcontainers). É esta execução que "quebra" nos branches de estudo.
 - `FakeAppDbContextContractTests` — o fake InMemory da suíte de unidade. Aqui está
   o contraste consciente: os contratos que o provider InMemory **não pode
   sustentar** (C3, C4, C5 — ele nem avalia índices/constraints) caem como
@@ -186,11 +186,11 @@ distante, num cenário de negócio a jusante.
 ### Demo.UnitTests
 
 Testam `OrderService` com um **FAKE em memória** (EF Core InMemory). Funcionam mesmo
-quando a persistência está quebrada — é o contraste que a palestra explora.
+quando a persistência está quebrada — é o contraste que o estudo explora.
 
 ---
 
-## Demonstração ao vivo: branch com bug "invisível" para testes de unidade
+## Exercício de estudo: branch com bug "invisível" para testes de unidade
 
 Há um bug **didático** que testes de unidade **não** capturam, mas o teste de
 integração **sim**. O motivo: o teste de unidade usa um FAKE em memória e valida só o
@@ -198,34 +198,36 @@ valor de retorno; o teste de integração consulta o **PostgreSQL real**.
 
 ```bash
 git checkout demo/integration-only-bug   # vê o teste quebrar
-dotnet test --solution PalestraIntegracao.slnx
+dotnet test --solution EstudoIntegracao.slnx
 # → os 5 testes de unidade passam
 # → os 3 testes de integração que conferem PERSISTÊNCIA falham:
 #      - CreateOrderEndpointTests.CreateOrder_WithValidRequest_ShouldPersistOrder
 #      - CreateOrderEndpointTests.CreateOrder_WhenPaymentGatewayApproves_ShouldPersistOrderWithApprovedStatus
 #      - CreateOrderEndpointTests.CreateOrder_WhenPaymentGatewayRefuses_ShouldReturn402AndPersistOrderWithRefusedStatus
 
-# "correção" ao vivo: adicionar o SaveChangesAsync ausente no OrderService
+# exercício: adicionar o SaveChangesAsync ausente no OrderService
 
-dotnet test --solution PalestraIntegracao.slnx   # → tudo verde
+dotnet test --solution EstudoIntegracao.slnx   # → tudo verde
 git checkout main                                # main já contém a versão corrigida
 ```
 
-Deixe o `SaveChangesAsync` presente em `main`; no branch de demonstração ele foi
-removido (veja o trecho destacado em `src/Demo.Application/OrderService.cs`).
+O `SaveChangesAsync` está presente em `main`; no branch de estudo ele foi
+removido (compare com `src/Demo.Application/OrderService.cs`).
 
 ### Branch `demo/unit-vs-integration` — regras #5 e #6
 
-Outro branch de demonstração com **dois bugs "invisíveis" a testes de unidade**,
+Outro branch de estudo com **dois bugs "invisíveis" a testes de unidade**,
 relacionados às regras de negócio #5 (unicidade) e #6 (preço congelado):
 
 ```bash
 git checkout demo/unit-vs-integration
-dotnet test --solution PalestraIntegracao.slnx
+dotnet test --solution EstudoIntegracao.slnx
 # → 5 testes de unidade PASSAM
 # → 2 testes de integração FALHAM, exatamente os que dependem do banco real:
 #      - CatalogEndpointTests.ProductName_UniqueConstraint_EnforcedByDatabase
 #      - GetOrderEndpointTests.GetOrder_WhenProductPriceChangesAfterPurchase_ShouldKeepOriginalUnitPrice
+# → também o teste de CONTRATO C4 falha, apontando direto à persistência:
+#      - PostgresAppDbContextContractTests.Product_NameUniqueIndex_IsEnforcedByPersistence
 ```
 
 - **#5:** o índice único do produto foi "esquecido" na migration (constraint não existe no

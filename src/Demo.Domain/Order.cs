@@ -2,7 +2,7 @@ namespace Demo.Domain;
 
 /// <summary>
 /// Pedido de compra. O Total é SEMPRE calculado a partir dos itens —
-/// nunca persistido no banco. Isso é um ponto da palestra: o cálculo tem que
+/// nunca persistido no banco. É um ponto de estudo: o cálculo tem que
 /// atravessar os itens reais vindos do PostgreSQL num teste de integração.
 /// </summary>
 public class Order

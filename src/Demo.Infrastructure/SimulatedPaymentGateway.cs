@@ -7,8 +7,8 @@ namespace Demo.Infrastructure;
 /// Implementação "real" do IPaymentGateway usada no runtime da API.
 /// Não chama nenhum serviço externo de verdade — apenas simula uma cobrança aprovada.
 ///
-/// O ponto didático é: em produção o corpo deste método faria um HTTP para um
-/// PSP externo. Numa palestra isso não faz sentido, então simulamos.
+/// O ponto é: em produção o corpo deste método faria um HTTP para um
+/// PSP externo. Numa aplicação de estudo isso não faz sentido, então simulamos.
 /// Nos testes de integração, este tipo é o ÚNICO que pode ser trocado por um fake,
 /// mantendo HTTP/ASP.NET/Application/Domain/EF Core/PostgreSQL 100% reais.
 /// </summary>

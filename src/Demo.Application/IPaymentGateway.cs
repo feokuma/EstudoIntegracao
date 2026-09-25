@@ -5,7 +5,7 @@ namespace Demo.Application;
 /// <summary>
 /// Dependência EXTERNA mockável: cobrança em um gateway de pagamento.
 /// A implementação "real" (SimulatedPaymentGateway) apenas simula a resposta,
-/// pois numa palestra não queremos chamar nenhum serviço externo de verdade.
+/// pois nesta aplicação de estudo não chamamos nenhum serviço externo de verdade.
 /// Nos testes, é o ÚNICO componente substituído por um fake.
 /// </summary>
 public interface IPaymentGateway

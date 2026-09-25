@@ -16,7 +16,7 @@
 services:
   db:
     image: postgres:17
-    container_name: palestra-db
+    container_name: estudo-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -24,7 +24,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - palestra_pgdata:/var/lib/postgresql/data
+      - estudo_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d demo"]
       interval: 5s
@@ -34,4 +34,4 @@ services:
 
 # Dados do banco persistem mesmo após `docker compose down` (não usa -v).
 volumes:
-  palestra_pgdata:
+  estudo_pgdata:
