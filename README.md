@@ -127,3 +127,26 @@ git checkout main                                # main já contém a versão co
 
 Deixe o `SaveChangesAsync` presente em `main`; no branch de demonstração ele foi
 removido (veja o trecho destacado em `src/Demo.Application/OrderService.cs`).
+
+### Branch `demo/unit-vs-integration` — regras #5 e #6
+
+Outro branch de demonstração com **dois bugs "invisíveis" a testes de unidade**,
+relacionados às regras de negócio #5 (unicidade) e #6 (preço congelado):
+
+```bash
+git checkout demo/unit-vs-integration
+dotnet test --solution PalestraIntegracao.slnx
+# → 5 testes de unidade PASSAM
+# → 2 testes de integração FALHAM, exatamente os que dependem do banco real:
+#      - CatalogEndpointTests.ProductName_UniqueConstraint_EnforcedByDatabase
+#      - GetOrderEndpointTests.GetOrder_WhenProductPriceChangesAfterPurchase_ShouldKeepOriginalUnitPrice
+```
+
+- **#5:** o índice único do produto foi "esquecido" na migration (constraint não existe no
+  banco; só a checagem em memória do service). O fake dos testes de unidade não impõe
+  constraint, então engana — só o PostgreSQL real detecta.
+- **#6:** o total passou a usar o preço **atual** do produto (`Product.Price`) em vez do
+  `UnitPrice` congelado na compra. Nos testes de unidade o preço nunca muda, então nada
+  aparece; no teste de integração, alteramos o preço após a compra e o total muda.
+
+Em `main` as duas regras estão corretas (índice único aplicado + `LineTotal` por `UnitPrice`).
